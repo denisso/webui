@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        width: 80%;
+        margin: 0 auto;
+        gap: 1rem;
+        padding: 1rem;
+      }
+      .box {
+        flex-basis: calc(50% - (1rem / 2));
+        padding: 1rem;
+      }
+      .items,
+      .log {
+        height: 500px;
+        border: solid;
+        overflow: auto;
+      }
+      .head {
+        font-weight: 900;
+        font-size: 1.5rem;
+        text-align: center;
+      }
+      .item {
+        padding: 0.3rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      After top:
+      <input
+        type="number"
+        id="input-top"
+        value="0"
+        min="0"
+        max="500"
+        step="1"
+      />
+      <button id="push-after-top">Push</button>
+      <button id="remove-after-top">Remove</button>
+      Before bottom:
+      <input
+        type="number"
+        id="input-bottom"
+        value="0"
+        min="0"
+        max="500"
+        step="1"
+      />
+      <button id="push-before-bottom">Push</button>
+      <button id="remove-before-bottom">Remove</button>
+      <input
+        type="number"
+        id="input-length"
+        value="0"
+        min="0"
+        max="500"
+        step="1"
+      />
+      <button>Set number elements in box</button>
+      <button>Restart Observer</button>
+    </div>
+    <div class="container">
+      <div class="box head">items (0)</div>
+      <div class="box head">log</div>
+      <div class="box items">
+        <div id="top">top</div>
+        <div id="bottom">bottom</div>
+      </div>
+      <div class="box log"></div>
+    </div>
+    <script>
+      const $items = document.querySelector(".items"),
+        $itemsHead = document.querySelector(".box.head"),
+        $log = document.querySelector(".log"),
+        $top = document.getElementById("top"),
+        $bottom = document.getElementById("bottom"),
+        $inputLength = document.getElementById("input-length"),
+        $inputTop = document.getElementById("input-top"),
+        $inputBottom = document.getElementById("input-bottom");
+
+      const log = (...message) => {
+        $itemsHead.innerHTML = `items (${$items.children.length - 2})`;
+        $log.insertAdjacentHTML(
+          "beforeend",
+          `<div class="item">${message.join(" ")}</div>`
+        );
+        $log.children[$log.children.length - 1].scrollIntoView();
+        if ($log.children.length < 200) return;
+        let n = 100;
+        while (n) {
+          $log.children[0].remove();
+          n--;
+        }
+      };
+      const addTopN = (n) => {
+        let str = "",
+          start =
+            $items.children.length == 2
+              ? -n + 1
+              : +$items.children[1].innerHTML - n;
+        for (let i = 0; i < n; i++) {
+          str += `<div class="item">${start + i}</div>`;
+        }
+        const top = $top.getBoundingClientRect().top;
+        $top.insertAdjacentHTML("afterend", str);
+        log("pushTop", n, "top:", top);
+        return $top.getBoundingClientRect().top;
+      };
+
+      const addTopH = (h) => {
+        let top;
+        for (let i = 0; i < n; i++) {
+          $top.insertAdjacentHTML("afterend", str);
+          top = $top.getBoundingClientRect().top;
+          if (top > h) break;
+        }
+        log("pushTop", n, "top:", top);
+        return top;
+      };
+
+      const removeTopN = (n) => {
+        n = Math.min($items.children.length - 2, n);
+        const ln = n;
+        while (n) {
+          $items.children[1].remove();
+          n--;
+        }
+        const top = $top.getBoundingClientRect().top;
+        log("removeTop:", ln, "top:", top);
+        return top;
+      };
+      const removeTopH = (h) => {
+        let top = $top.getBoundingClientRect().top;
+        while (top > h) {
+          $items.children[1].remove();
+          n--;
+        }
+        top = $top.getBoundingClientRect().top;
+        log("removeTop:", ln, "top:", top);
+        return top;
+      };
+      const addBottomN = (n) => {
+        let str = "",
+          start =
+            $items.children.length == 2
+              ? 0
+              : +$items.children[$items.children.length - 2].innerHTML + 1;
+        for (let i = 0; i < n; i++) {
+          str += `<div class="item">${start + i}</div>`;
+        }
+        $bottom.insertAdjacentHTML("beforebegin", str);
+        const bottom = $bottom.getBoundingClientRect().top;
+        log("pushBottom", n, "bottom:", bottom);
+        return bottom;
+      };
+
+      const removeBottomN = (n) => {
+        n = Math.min($items.children.length - 2, n);
+        const ln = n;
+        while (n) {
+          $items.children[$items.children.length - 2].remove();
+          n--;
+        }
+        const bottom = $bottom.getBoundingClientRect().top;
+        log("removeBottom", ln, "bottom:", bottom);
+        return bottom;
+      };
+
+      document
+        .getElementById("push-after-top")
+        .addEventListener("click", () => addTopN(+$inputTop.value));
+
+      document
+        .getElementById("remove-after-top")
+        .addEventListener("click", () => removeTopN(+$inputTop.value));
+
+      document
+        .getElementById("push-before-bottom")
+        .addEventListener("click", () => addBottomN(+$inputBottom.value));
+
+      document
+        .getElementById("remove-before-bottom")
+        .addEventListener("click", () => removeBottomN(+$inputBottom.value));
+
+      const triggerLimit = 280;
+
+      const options = {
+        root: $items,
+        rootMargin: `${triggerLimit}px 0px ${triggerLimit}px 0px`,
+        threshold: 1.0,
+      };
+      let observer,
+        topIn = true,
+        bottomIn = true,
+        ignore = false;
+
+      const bs = (array, callback, firstRight = true) => {
+        let left = 0;
+        let right = array.length - 1;
+        let result = -1;
+
+        while (left <= right) {
+          const mid = Math.floor((left + right) / 2);
+          if (callback(array[mid])) {
+            result = mid;
+            if (firstRight) {
+              right = mid - 1;
+            } else {
+              left = mid + 1;
+            }
+          } else {
+            if (firstRight) {
+              left = mid + 1;
+            } else {
+              right = mid - 1;
+            }
+          }
+        }
+
+        return result;
+      };
+
+      const isTopInRange = (item) => {
+        const rect = item.getBoundingClientRect();
+        if (
+          rect.top < -triggerLimit &&
+          rect.top + rect.height < -triggerLimit
+        ) {
+          return false;
+        }
+        return true;
+      };
+      async function triggerBottom() {
+        ignore = true;
+        // delete items from top, find first element in range observer
+        const indx = bs($items.children, isTopInRange);
+        if (indx > 0) {
+          removeTopN(indx - 1);
+        }
+        // add item to bottom
+        addBottomN(30);
+        while($bottom.getBoundingClientRect().top < window.innerWidth + triggerLimit){
+            addBottomN(30);
+        }
+        ignore = false;
+      }
+
+      const isBottomInRange = (item) => {
+        const rect = item.getBoundingClientRect();
+        if (
+          rect.top > window.innerHeight + triggerLimit
+        ) {
+          return false;
+        }
+        return true;
+      };
+      async function triggerTop() {
+        ignore = true;
+        // delete items from bottom, find first element in range observer
+        const indx = bs($items.children, isBottomInRange, false);
+        if (indx != -1 && indx <$items.children.length - 1) {
+          removeBottomN($items.children.length - indx - 1);
+        }
+        // add item to top
+        addTopN(30);
+        while($top.getBoundingClientRect().top > -triggerLimit){
+            addTopN(30);
+        }
+
+        ignore = false;
+      }
+      function startObserver() {
+        if (observer) observer.disconnect();
+        observer = new IntersectionObserver((entries, observer) => {
+          entries.forEach((entry) => {
+            const encounter = entry.target;
+            if (encounter === $top) {
+              if (topIn) {
+                log(`observe top out, no action just log`);
+              } else {
+                log(`observe top in`);
+                if (!ignore) {
+                  requestAnimationFrame(triggerTop);
+                }
+              }
+              topIn = !topIn;
+            } else {
+              if (bottomIn) {
+                log(`observe bottom out, no action just log`);
+              } else {
+                log(`observe bottom in`);
+                if (!ignore) {
+                  requestAnimationFrame(triggerBottom);
+                }
+              }
+              bottomIn = !bottomIn;
+            }
+          });
+        }, options);
+        observer.observe($top);
+        observer.observe($bottom);
+      }
+      
+
+      function firstInit() {
+        // Add items until bottom elements is enough
+        addBottomN(30);
+        while($bottom.getBoundingClientRect().top < window.innerWidth + triggerLimit){
+            addBottomN(30);
+        }
+        const zeroElement = $items.children[1];
+        addTopN(30);
+        zeroElement.scrollIntoView();
+        while($top.getBoundingClientRect().top > -triggerLimit){
+            addTopN(30);
+        }
+        
+        startObserver();
+      }
+      firstInit()
+    </script>
+  </body>
+</html>
