@@ -92,20 +92,6 @@
         $inputTop = document.getElementById("input-top"),
         $inputBottom = document.getElementById("input-bottom");
 
-      const log = (...message) => {
-        $itemsHead.innerHTML = `items (${$items.children.length - 2})`;
-        $log.insertAdjacentHTML(
-          "beforeend",
-          `<div class="item">${message.join(" ")}</div>`
-        );
-        $log.children[$log.children.length - 1].scrollIntoView();
-        if ($log.children.length < 200) return;
-        let n = 100;
-        while (n) {
-          $log.children[0].remove();
-          n--;
-        }
-      };
       const addTopN = (n) => {
         let str = "",
           start =
@@ -196,7 +182,8 @@
         .getElementById("remove-before-bottom")
         .addEventListener("click", () => removeBottomN(+$inputBottom.value));
 
-      const triggerLimit = 280;
+      const triggerLimit = 280,
+        appendItems = 30;
 
       const options = {
         root: $items,
@@ -244,41 +231,79 @@
         }
         return true;
       };
+
       async function triggerBottom() {
+        if ($items.children.length == 2) return;
         ignore = true;
+        const rectItems = $items.getBoundingClientRect();
+        // add item to bottom
+        addBottomN(appendItems);
+        while (
+          $bottom.getBoundingClientRect().top <
+          window.innerWidth + triggerLimit
+        ) {
+          addBottomN(appendItems);
+        }
+        ignore = false;
+
         // delete items from top, find first element in range observer
         const indx = bs($items.children, isTopInRange);
         if (indx > 0) {
           removeTopN(indx - 1);
         }
-        // add item to bottom
-        addBottomN(30);
-        while($bottom.getBoundingClientRect().top < window.innerWidth + triggerLimit){
-            addBottomN(30);
-        }
-        ignore = false;
       }
 
-      const isBottomInRange = (item) => {
-        const rect = item.getBoundingClientRect();
-        if (
-          rect.top > window.innerHeight + triggerLimit
-        ) {
+      const isBottomInRange = (rectItems, item) => {
+        const rectItem = item.getBoundingClientRect();
+        if (rectItem.top > rectItems.height + triggerLimit) {
+          return false;
+        }
+        return true;
+      };
+
+      // find element out of range items view
+      const isItemsOutRangeViewTop = (rectItems, item) => {
+        const rectItem = item.getBoundingClientRect();
+        if (rectItem.top > rectItems.top) {
           return false;
         }
         return true;
       };
       async function triggerTop() {
+        if ($items.children.length == 2) return;
         ignore = true;
-        // delete items from bottom, find first element in range observer
-        const indx = bs($items.children, isBottomInRange, false);
-        if (indx != -1 && indx <$items.children.length - 1) {
-          removeBottomN($items.children.length - indx - 1);
+        const rectItems = $items.getBoundingClientRect();
+
+        // find first element out of range items view
+        let indx = bs(
+          $items.children,
+          isItemsOutRangeViewTop.bind(null, rectItems),
+          false
+        );
+        if (indx == -1) {
+          indx = 1;
         }
         // add item to top
-        addTopN(30);
-        while($top.getBoundingClientRect().top > -triggerLimit){
-            addTopN(30);
+        let counter = appendItems;
+        addTopN(counter);
+        $items.children[counter + indx].scrollIntoView();
+        while (
+          $top.getBoundingClientRect().top >
+          rectItems.top - triggerLimit
+        ) {
+          counter += appendItems;
+          addTopN(counter);
+          $items.children[counter + indx].scrollIntoView();
+        }
+
+        // delete items from bottom, find first element in range observer
+        indx = bs(
+          $items.children,
+          isBottomInRange.bind(null, rectItems),
+          false
+        );
+        if (indx != -1 && indx < $items.children.length - 1) {
+          removeBottomN($items.children.length - indx - 1);
         }
 
         ignore = false;
@@ -314,24 +339,41 @@
         observer.observe($top);
         observer.observe($bottom);
       }
-      
 
       function firstInit() {
         // Add items until bottom elements is enough
         addBottomN(30);
-        while($bottom.getBoundingClientRect().top < window.innerWidth + triggerLimit){
-            addBottomN(30);
+        while (
+          $bottom.getBoundingClientRect().top <
+          window.innerWidth + triggerLimit
+        ) {
+          addBottomN(30);
         }
         const zeroElement = $items.children[1];
         addTopN(30);
         zeroElement.scrollIntoView();
-        while($top.getBoundingClientRect().top > -triggerLimit){
-            addTopN(30);
+        while ($top.getBoundingClientRect().top > -triggerLimit) {
+          addTopN(30);
         }
-        
+        log("start observer");
         startObserver();
       }
-      firstInit()
+      firstInit();
+
+      function log(...message) {
+        $itemsHead.innerHTML = `items (${$items.children.length - 2})`;
+        $log.insertAdjacentHTML(
+          "beforeend",
+          `<div class="item">${message.join(" ")}</div>`
+        );
+        $log.children[$log.children.length - 1].scrollIntoView();
+        if ($log.children.length < 200) return;
+        let n = 100;
+        while (n) {
+          $log.children[0].remove();
+          n--;
+        }
+      }
     </script>
   </body>
 </html>
