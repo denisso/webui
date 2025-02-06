@@ -2,7 +2,7 @@ import List from './list.js';
 import throttle from './throttle';
 // instead of a List, you can use querySelectorAll()
 const list = new List();
-const duration = 1000000;
+const duration = 5000;
 const texts = [
   'Lorem, ipsum dolor sit amet consectetur, adipisicing elit.',
   'Voluptatum mollitia dicta ab dolorem iure similique fugiat sapiente ullam dignissimos maxime quo alias ea quasi magni magnam facilis aspernatur, asperiores temporibus. Provident quis totam, maiores recusandae ut expedita eligendi dolor sed, tempora, quo asperiores nobis, vitae error? Suscipit nihil nesciunt aliquam in, enim!',
@@ -11,17 +11,17 @@ let textIndx = 0;
 
 const verticalGap = 16;
 
-const updatePopups = (node = list.tail.prev) => {
+const updatePopups = () => {
   if (list.length == 0) return;
-  if (list.length == 1) {
-    list.tail.value.style.buttom = 0;
-    return;
-  }
+  let start = list.tail,
+    node = start.prev;
+  start.value.style.bottom = 0;
+
   // cicle with 1 reflow for getBoundingClientRect
   const bottoms = new Array(list.length).fill(0);
 
   for (
-    let i = 1, prevHeight = list.tail.value.getBoundingClientRect().height;
+    let i = 1, prevHeight = start.value.getBoundingClientRect().height;
     node;
     i++
   ) {
@@ -38,7 +38,7 @@ const updatePopups = (node = list.tail.prev) => {
 };
 window.addEventListener(
   'resize',
-  throttle(() => updatePopups)
+  throttle(() => updatePopups())
 );
 
 const moveLeft = [
@@ -69,22 +69,17 @@ const createPopup = () => {
   const node = list.append(popup);
   const animationEndHandler = () => {
     popup.remove();
-    q.dequeue();
     list.remove(node);
   };
   const line = popup.querySelector('.line');
-  line.animate(...moveLeft);
-  popup.addEventListener('animationend', animationEndHandler);
+  const animation = line.animate(...moveLeft);
+  animation.addEventListener('finish', animationEndHandler);
   popup.addEventListener('click', (e) => {
     if (!e.target.classList.contains('close')) return;
-    popup.removeEventListener('animationend', animationEndHandler);
+    animation.removeEventListener('finish', animationEndHandler);
     list.remove(node);
     popup.remove();
-    if (!node.next) {
-      updatePopups(node.prev);
-    } else {
-      updatePopups(node.next);
-    }
+    updatePopups();
   });
 
   document.body.appendChild(popup);

@@ -10,16 +10,17 @@ export default class List {
     this.length = 0;
   }
   append(value) {
+    this.length++;
     const tail = new Node(value);
     if (this.tail) {
       tail.prev = this.tail;
       this.tail.next = tail;
     }
     this.tail = tail;
-    this.length++;
     return tail;
   }
   remove(node) {
+    this.length--;
     if (node === this.tail) {
       if (!node.prev) {
         this.head = this.tail = null;
@@ -45,6 +46,6 @@ export default class List {
     } else {
       if (node.prev) node.prev.next = null;
     }
-    this.length--;
+    
   }
 }
