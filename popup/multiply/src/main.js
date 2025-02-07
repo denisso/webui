@@ -11,44 +11,47 @@ let textIndx = 0;
 
 const verticalGap = 16;
 
-const updatePopups = () => {
+const verticalAlignPopups = () => {
   if (list.length == 0) return;
   let start = list.tail,
     node = start.prev;
-  start.value.style.bottom = 0;
 
   // cicle with 1 reflow for getBoundingClientRect
-  const bottoms = new Array(list.length).fill(0);
-
   for (
-    let i = 1, prevHeight = start.value.getBoundingClientRect().height;
+    let i = 1, prevHeight = start.value.popup.getBoundingClientRect().height;
     node;
     i++
   ) {
-    bottoms[i] = bottoms[i - 1] + prevHeight + verticalGap;
-    prevHeight = node.value.getBoundingClientRect().height;
+    node.value.tY = -(Math.abs(node.next.value.tY) + prevHeight + verticalGap);
+    prevHeight = node.value.popup.getBoundingClientRect().height;
     node = node.prev;
   }
   node = list.tail.prev;
   // cicle with 1 reflow for assign new position
   for (let i = 1; node; i++) {
-    node.value.style.bottom = bottoms[i] + 'px';
+    node.value.popup.style.transform = `translate(0, ${node.value.tY}px)`;
     node = node.prev;
   }
 };
+
 window.addEventListener(
   'resize',
-  throttle(() => updatePopups())
+  throttle(() => verticalAlignPopups())
 );
 
-const moveLeft = [
+const moveRight = [
   [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }],
   {
+    id: 'moveRight',
     duration,
     easing: 'linear',
     fill: 'forwards',
   },
 ];
+const animations = new Set();
+// p = true - play otherwise pause
+const ppAnimations = (p) =>
+  animations.forEach((a) => (p ? a.play() : a.pause()));
 
 const createPopup = () => {
   if (textIndx == texts.length) textIndx = 0;
@@ -63,27 +66,44 @@ const createPopup = () => {
   `;
 
   const popup = document.createElement('div');
+
   popup.classList.add('popup');
   popup.insertAdjacentHTML('afterbegin', popupContent);
   popup.style.bottom = 0;
-  const node = list.append(popup);
-  const animationEndHandler = () => {
-    popup.remove();
-    list.remove(node);
-  };
+  const node = list.append({ popup, tY: 0 });
   const line = popup.querySelector('.line');
-  const animation = line.animate(...moveLeft);
+  const animation = line.animate(...moveRight);
+  const animationEndHandler = (e) => {
+    if (e.target.id !== 'moveRight') return;
+    popup.style.transform = `translate(100%, ${node.value.tY}px)`;
+    popup.addEventListener('transitionend', () => {
+      popup.remove();
+      list.remove(node);
+      animations.delete(animation);
+    });
+  };
+  popup.addEventListener('mouseenter', () => ppAnimations(false));
+  popup.addEventListener('mouseleave', () => ppAnimations(true));
+  animations.add(animation);
   animation.addEventListener('finish', animationEndHandler);
+
   popup.addEventListener('click', (e) => {
     if (!e.target.classList.contains('close')) return;
     animation.removeEventListener('finish', animationEndHandler);
     list.remove(node);
-    popup.remove();
-    updatePopups();
+    popup.style.transform = `translate(100%, ${node.value.tY}px)`;
+    popup.addEventListener('transitionend', () => {
+      animations.delete(animation);
+      animation.cancel();
+      popup.remove();
+      verticalAlignPopups();
+    });
   });
-
   document.body.appendChild(popup);
-  updatePopups();
+  requestAnimationFrame(() => {
+    popup.style.transform = `translateX(0)`;
+    verticalAlignPopups();
+  });
 };
 
 const btnCreatePopup = document.getElementById('btnCreatePopup');

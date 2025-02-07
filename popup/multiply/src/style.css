@@ -3,14 +3,18 @@
   padding: 0;
   box-sizing: border-box;
 }
-
+body {
+  overflow-x: hidden;
+}
 .popup {
   position: absolute;
   display: flex;
   max-width: 400px;
   border: solid;
   right: 0;
-  transition: bottom 0.2s;
+  bottom: 0;
+  transform: translateX(100%);
+  transition: transform 0.2s;
   background-color: white;
 }
 
