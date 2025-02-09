@@ -3,6 +3,7 @@ import throttle from './throttle';
 // instead of a List, you can use querySelectorAll()
 const list = new List();
 const duration = 5000;
+const popupTemplate = document.getElementById('popup-template');
 const texts = [
   'Lorem, ipsum dolor sit amet consectetur, adipisicing elit.',
   'Voluptatum mollitia dicta ab dolorem iure similique fugiat sapiente ullam dignissimos maxime quo alias ea quasi magni magnam facilis aspernatur, asperiores temporibus. Provident quis totam, maiores recusandae ut expedita eligendi dolor sed, tempora, quo asperiores nobis, vitae error? Suscipit nihil nesciunt aliquam in, enim!',
@@ -61,20 +62,8 @@ const ppAnimations = (p) =>
 
 const createPopup = () => {
   if (textIndx == texts.length) textIndx = 0;
-  const popupContent = `
-  <div class="content">
-  ${texts[textIndx++]}
-  </div>
-  <div class="line-box">
-    <div class="line"></div>
-  </div>
-  <div class="close">X</div>
-  `;
-
-  const popup = document.createElement('div');
-
-  popup.classList.add('popup');
-  popup.insertAdjacentHTML('afterbegin', popupContent);
+  const popup = popupTemplate.content.cloneNode(true).querySelector('.popup');
+  popup.querySelector('.content').innerHTML = texts[textIndx++];
   const node = list.append({ popup, tY: 0 });
 
   popup.addEventListener('mouseenter', () => ppAnimations(false));
