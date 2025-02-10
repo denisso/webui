@@ -7,10 +7,10 @@ class Node {
 
 export default class List {
   constructor() {
-    this.length = 0;
+    this.tail = null;
+    this.head = null;
   }
   append(value) {
-    this.length++;
     const tail = new Node(value);
     if (this.tail) {
       tail.prev = this.tail;
@@ -20,8 +20,6 @@ export default class List {
     return tail;
   }
   remove(node) {
-    this.length--;
-
     if (node === this.head) {
       this.head = node.next;
       if (this.head) {
@@ -44,5 +42,8 @@ export default class List {
         node.next.prev = node.prev;
       }
     }
+    node.value = null;
+    node.next = null;
+    node.prev = null;
   }
 }
