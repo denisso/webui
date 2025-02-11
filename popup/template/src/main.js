@@ -56,20 +56,23 @@ const moveRight = [
   },
 ];
 const animations = new Set();
-// p = true - play otherwise pause
-const ppAnimations = (p) =>
-  animations.forEach((a) => {
-    if (a.playState == 'finised') return;
-    p ? a.play() : a.pause();
-  });
-
-const mouseenterListener = () => ppAnimations(false),
-  mouseleaveListener = () => ppAnimations(true);
 
 const createPopup = () => {
   if (textIndx == texts.length) textIndx = 0;
   let popup = popupTemplate.content.cloneNode(true).querySelector('.popup');
   popup.querySelector('.content').innerHTML = texts[textIndx++];
+  let finished = false;
+  // p = true - play otherwise pause
+  const ppAnimations = (p) => {
+    if (finished) return;
+    animations.forEach((a) => {
+      if (a.playState == 'finished') return;
+      p ? a.play() : a.pause();
+    });
+  };
+
+  const mouseenterListener = () => ppAnimations(false),
+    mouseleaveListener = () => ppAnimations(true);
   let node = list.append({ popup, tY: 0 });
 
   popup.addEventListener('mouseenter', mouseenterListener);
@@ -83,18 +86,18 @@ const createPopup = () => {
     list.remove(node);
     node = null;
   };
-
-  popup.querySelector('.close').addEventListener('click', animationEndHandler);
-
+  const clickHandler = () => {
+    ppAnimations(true);
+    finished = true;
+    animationEndHandler();
+  };
   const cleanAndAlign = () => {
     popup.removeEventListener('mouseenter', mouseenterListener);
     popup.removeEventListener('mouseleave', mouseleaveListener);
     popup.removeEventListener('transitionend', cleanAndAlign);
-    popup
-      .querySelector('.close')
-      .removeEventListener('click', animationEndHandler);
+    popup.querySelector('.close').removeEventListener('click', clickHandler);
     animation.removeEventListener('finish', animationEndHandler);
-    if (animation.playState == 'running') animation.cancel();
+    animation.cancel();
     animations.delete(animation);
     animation = null;
     popup.remove();
@@ -103,6 +106,7 @@ const createPopup = () => {
     verticalAlignPopups();
   };
 
+  popup.querySelector('.close').addEventListener('click', clickHandler);
   document.body.appendChild(popup);
   requestAnimationFrame(() => {
     animation = popup.querySelector('.line').animate(...moveRight);
